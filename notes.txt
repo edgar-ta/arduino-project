@@ -1,0 +1,73 @@
+// puntero hacia una array de funciones que toman entero y regresan void pointer
+void* (*(*fptr)(int))[10];
+void* someVoid = (*(*fptr + 1))(5);
+
+// array de primitivo
+int ints[32];
+ints[0];
+
+// array de punteros a primitivo
+int* intPtrs[32];
+int a = *intPtrs[0];
+// subscript has greater precedence than dereference; this is going to take
+// the zeroth pointer and then dereference to get the int of the pointer
+
+// puntero doble a función
+void ((**doubleFunctionPtr)(int));
+(*doubleFunctionPtr)(5);
+
+// array de punteros a función
+void** (*something[32])(int);
+void** returnValue = something[0](5);
+
+// pointer to array
+int (*arrayPointer)[32];
+int value = (*arrayPointer)[0];
+
+// pointer to function that returns pointer to array
+int (*(*pointerToFunction)())[10];
+int (*pointerToArray)[10] = pointerToFunction();
+
+// type (*name)(args) <- ptr to func
+// type (*name)[len] <- ptr to array
+
+// type (*(*name)(args))[len] <- func pointer that returns pointer to array
+// type (*(*name)[len])(args) <- pointer to array of func pointer
+
+
+// type_a (*name_a)(args_a) <- func_a
+// type_b (*name_b)(args_b) <- func_b
+// 
+// If I wanted to make func_a the type of func_b (func_b returns func_a); 
+// reemplazo el nombre de b en la definición de a:
+// 
+// type_a (*(name_c)(args_b))(args_a)
+// 
+// Análogamente; si quiero que func_a regrese func_b;
+// type_b (*(name_d)(args_a))(args_b)
+// 
+// Nótese como los argumentos más cercanos son los que se utilizan en la llamda de la función
+// 
+
+// type_a (*name_a)[len_a] <- ptr_a
+// type_b (*name_b)[len_b] <- ptr_b
+// 
+// If I wanted to make ptr_b the type of ptr_a (que la primer array tenga punteros de tipo ptr_b);
+// 
+// type_b (*(*name_c)[len_a])[len_b]
+
+// En otras palabras; al que le quiero cambiar el tipo es el que muevo (y su tipo desaparece)
+
+// Más aún; los tipos complejos se leen desde el centro
+
+void* (*funcName)();
+void* (*ptrName)[8];
+
+void* (*(*functionName)())[8];
+ptrName = functionName();
+
+void* (*(*pointerName)[8])();
+funcName = (*pointerName)[3];
+
+int (**doublePointerToArr)[32];
+int firstElement = (***doublePointerToArr);
