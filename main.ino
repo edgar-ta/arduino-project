@@ -68,15 +68,22 @@ void onSafe(MotionConnection* connection){
 /**
  * Direcciones en las que un objeto se mueve respecto
  * al sensor.
- *
- * Hin -> (alemán): Que se está alejando
- * Her <- (alemán): Que se está acercando
- * Unknown (inglés): Dirección desconocida
  * */
 typedef enum
 {
+    /**
+     * Alemán; que se está alejando
+     * */
     HIN,
+
+    /**
+     * Alemán; que se está acercando
+     * */
     HER,
+
+    /**
+     * Dirección desconocida
+     * */
     UNKNOWN
 } Direction;
 
@@ -232,14 +239,13 @@ public:
     };
 };
 
-MotionConnection* mainConnection;
+MotionConnection mainConnection(5, 1);
 
 void setup()
 {
-    mainConnection = new MotionConnection(5, 1);
 };
 
 void loop()
 {
-    mainConnection->listen();
+    mainConnection.listen();
 };
