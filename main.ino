@@ -22,7 +22,7 @@
 /**
  * El nombre es self-explanatory
  * */
-#define PLACEHOLDER_NUMBER 1
+#define PLACEHOLDER_NUMBER 0
 
 /**
  * Velocidad máxima (inclusiva) que un objeto puede tener
@@ -195,12 +195,12 @@ public:
      * */
     void continueConnection(double distance) {
         unsigned long time = millis();
-        double distanceDelta = this->distance - distance;
-        unsigned long timeDelta = this->time - time;
+        double distanceDelta = distance - this->distance;
+        unsigned long timeDelta = time - this->time;
 
         // the speed is measured in m/s, but the time delta was given in ms
         this->speed = 1000 * distanceDelta / timeDelta;
-        this->direction = distanceDelta < 0 ? HIN : HER;
+        this->direction = distanceDelta > 0 ? HIN : HER;
         this->time = time;
         this->distance = distance;
     }
@@ -217,6 +217,11 @@ public:
     void endConnection()
     {
         if (this->isActive) 
+        // this->isActive = false;
+        // this->distance = PLACEHOLDER_NUMBER;
+        // this->time = PLACEHOLDER_NUMBER;
+        // this->speed = PLACEHOLDER_NUMBER;
+        // this->direction = UNKNOWN;
         this->init(this->input, this->output, false, PLACEHOLDER_NUMBER, PLACEHOLDER_NUMBER, PLACEHOLDER_NUMBER, UNKNOWN);
     };
 
@@ -235,8 +240,8 @@ public:
             this->endConnection();
             return;
         }
-        if (this->isActive) this->startConnection(distance);
-        else this->continueConnection(distance);
+        if (this->isActive) this->continueConnection(distance);
+        else this->startConnection(distance);
         this->act();
     };
 
