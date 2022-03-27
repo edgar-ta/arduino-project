@@ -93,10 +93,44 @@ typedef enum
     HER,
 
     /**
-     * Placeholder
+     * Inglés; que está quieto
+     * */
+    STILL,
+
+    /**
+     * Self-explanatory
      * */
     PLACEHOLDER
 } Direction;
+
+/**
+ * Variable auxiliar (no se utilizará en la versión final)
+ * que contiene los nombres de las direcciones (usados
+ * para imprimir datos en pantalla)
+ * 
+ * ---
+ * El de `PLACEHOLDER` no se puede imprimir en pantalla
+ * y no tiene caso añadirlo
+ * */
+const String DirectionName[] = {
+    "HIN", "HER", "STILL"
+};
+
+/**
+ * Obtiene la dirección correspondiente a una delta
+ * de distancia
+ * 
+ * ---
+ * Si la delta es igual a cero, el objeto no se está
+ * moviendo y se regresa `STILL`, si la delta es mayor
+ * a cero, el objeto se está acercando y se regresa
+ * `HER`, sino, se regresa `HIN`
+ * */
+Direction getDirection(double distanceDelta) {
+    if (distanceDelta == 0) return Direction::STILL;
+    if (distanceDelta > 0) return Direction::HER;
+    return Direction::HIN;
+}
 
 /**
  * Clase que monitorea datos de un sensor de un sensor ultrasónico, calcula y actúa
@@ -208,9 +242,10 @@ public:
         double distanceDelta = distance - this->distance;
         unsigned long timeDelta = time - this->time;
 
-        // the speed is measured in m/s, but the time delta was given in ms
+        // se multiplica por mil para convertir los milisegundos de
+        // la delta de tiempo a segundos
         this->speed = 1000 * distanceDelta / timeDelta;
-        this->direction = distanceDelta > 0 ? HIN : HER;
+        this->direction = getDirection(distanceDelta);
         this->time = time;
         this->distance = distance;
     }
@@ -325,8 +360,8 @@ public:
         Serial.print("Velocidad: ");
         Serial.print(this->speed, 6);
         Serial.println(" m/s");
-        Serial.print("Dirección");
-        Serial.print(this->direction == Direction::HER? "HER": "HIN");
+        Serial.print("Dirección: ");
+        Serial.print(DirectionName[this->direction]);
         Serial.println("---");
     }
 };
