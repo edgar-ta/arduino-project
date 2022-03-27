@@ -15,9 +15,14 @@
  * */
 
 /** 
- * Lectura que indica que el sensor no está detectando nada 
+ * Valor de una duración que no existe (cuando no hay objeto cercano)
  * */
-#define NULL_READING 0
+#define NULL_DURATION 0
+
+/**
+ * Valor de una distancia que no existe (cuando no hay objeto cercano)
+ * */
+#define NULL_DISTANCE -1
 
 /**
  * El nombre es self-explanatory
@@ -25,33 +30,36 @@
 #define PLACEHOLDER_NUMBER 0
 
 /**
- * Velocidad máxima (inclusiva) que un objeto puede tener
- * sin ser considerado peligroso; en m/s
- * */
-#define EMERGENCY_SPEED 2
-
-/**
- * Distancia mínima (inclusiva) que un objeto puede tener
- * sin ser considerado peligroso (en m); un objeto
- * más cercano que esto es considerado peligroso
- * */
-#define MODERATE_DISTANCE 0.5
-
-/**
- * Velocidad de una onda infrarroja (o lo que sea que vamos a utilizar
- * para medir); en m/s
- * */
-#define WAVE_SPEED 300
-
-class MotionConnection;
-
-/**
- * Convierte una lectura a metros.   
+ * Velocidad máxima (exclusiva) que un objeto puede tener
+ * sin ser considerado peligroso; en m/s.
  * 
+ * Todas las velocidades mayores a esta serán consideradas
+ * peligrosas.
+ * */
+#define SAFE_SPEED 2
+
+/**
+ * Distancia mínima (exclusiva) que un objeto puede tener
+ * sin ser considerado peligroso (en m).
+ * 
+ * Todas las distancias menores a esta serán consideradas
+ * peligrosas.
+ * */
+#define SAFE_DISTANCE 0.5
+
+/**
+ * Velocidad de una onda de sonido; en m/s
+ * */
+#define SOUND_SPEED 333
+
+/**
+ * Convierte una duración a metros.   
+ * 
+ * ---
  * Para pasar de microsegundos a metros, primero
  * se dividen dichos microsegundos por 10**6 para convertirlos a segundos
  * (recordemos que un microsegundo es un millonésimo
- * de segundo), luego se multiplican esos segundos por la wave speed
+ * de segundo), luego se multiplican esos segundos por la velocidad del sonido
  * y se obtiene la distancia que la onda recorrió de ida y vuelta,
  * solo requerimos la distancia de ida (para saber qué tan lejos
  * del sensor está el objeto) y, ya que la distancia de ida y vuelta
@@ -60,25 +68,12 @@ class MotionConnection;
  * Se acomoda la ecuación para dejarla estéticamente más correcta
  * y ya está.
  * 
- * @param reading Lectura del sensor (en m/μs)
- * @returns Distancia (en metros) que corresponde a la lectura dada
+ * @param duration Duración medida por el sensor (en μs)
+ * @returns Distancia (en m) que corresponde a la duración dada
  * */
-double parseReading(unsigned long reading)
+double getDistanceFromDuration(unsigned long duration)
 {
-    return reading * WAVE_SPEED / (2 * pow(10, 6));
-};
-
-void onEmergency(MotionConnection* connection){
-    //
-};
-
-void onModerate(MotionConnection* connection){
-    // 
-    unsigned long long something = 32.402;
-};
-
-void onSafe(MotionConnection* connection){
-    //
+    return duration * SOUND_SPEED / (2 * pow(10, 6));
 };
 
 /**
@@ -98,35 +93,37 @@ typedef enum
     HER,
 
     /**
-     * Dirección desconocida
+     * Placeholder
      * */
-    UNKNOWN
+    PLACEHOLDER
 } Direction;
 
 /**
- * Clase que monitorea datos de un sensor de distancia, calcula y actúa
+ * Clase que monitorea datos de un sensor de un sensor ultrasónico, calcula y actúa
  * según es necesario 
  * */
 class MotionConnection
 {
 public:
     /** 
-     * El pin (número de pin) a utilizar para leer
-     * datos del sensor de distancia 
+     * El pin (número de pin) a utilizar para encender
+     * el sensor
      * */
-    short input;
+    short trigger;
 
     /**
-     * El pin (número de pin) a utilizar para controlar
-     * el sensor (hacerlo prender y apagar)
+     * El pin (número de pin) a utilizar para obtener
+     * datos del sensor
      * */
-    short output;
+    short listener;
 
     /**
      * Flag; indica si la conexión está recibiendo y calculando datos o no.
-     * Cuando la conexión está inactiva, tiene valores por defecto
+     * 
+     * Cuando la conexión está inactiva, tiene valores por defecto 
+     * (algunos de los cuales son placeholders)
      * */
-    boolean isActive;
+    boolean active;
 
     /**
      * La distancia anterior capturada por la conexión (m)
@@ -150,15 +147,20 @@ public:
     Direction direction;
 
 protected:
-    void init(short input, short output, bool isActive, double distance, double speed, unsigned long time, Direction direction)
-    {
-        this->input = input;
-        this->output = output;
-        this->isActive = isActive;
-        this->distance = distance;
-        this->speed = speed;
-        this->time = time;
-        this->direction = direction;
+    /**
+     * Inicializa valores con placeholders
+     * 
+     * ---
+     * Los valores a inicializar son la velocidad, 
+     * la distancia, el tiempo y la dirección.
+     * La dirección se inicializa con `Direction::PLACEHOLDER`
+     * y todos los demás con `PLACEHOLDER_NUMBER`
+     * */
+    void setPlaceholders() {
+        this->speed = PLACEHOLDER_NUMBER;
+        this->distance = PLACEHOLDER_NUMBER;
+        this->time = PLACEHOLDER_NUMBER;
+        this->direction = Direction::PLACEHOLDER;
     }
 
 public:
@@ -168,30 +170,38 @@ public:
      * @param input Pin a utilizar para recibir datos del sensor
      * @param output Pin a utilizar para activar el sensor
      * */
-    MotionConnection(short input, short output)
+    MotionConnection(short listener, short trigger)
     {
-        pinMode(input, INPUT);
-        pinMode(output, OUTPUT);
-        init(input, output, false, PLACEHOLDER_NUMBER, PLACEHOLDER_NUMBER, PLACEHOLDER_NUMBER, UNKNOWN);
+        pinMode(listener, INPUT);
+        pinMode(trigger, OUTPUT);
+
+        this->active = false;
+        this->listener = listener;
+        this->trigger = trigger;
+        this->setPlaceholders();
     };
 
     /**
-     * @brief Inicia una conexión
-     *
+     * Inicia una conexión
+     * 
+     * ---
      * Guarda el tiempo actual (dado por la built-in millis),
      * la distancia dada, y cambia el estado de la conexión a activo
      *
-     * @param distance La distancia
+     * @param distance La distancia con la cual empezar la conexión
      * */
     void startConnection(double distance)
     {
         this->distance = distance;
         this->time = millis();
-        this->isActive = true;
+        this->active = true;
     }
 
     /**
      * Calcula los nuevos datos de la conexión
+     * 
+     * @param distance La distancia a utilizar para continuar
+     * la conexión
      * */
     void continueConnection(double distance) {
         unsigned long time = millis();
@@ -209,60 +219,129 @@ public:
      * Termina la conexión
      *
      * ---
-     * Si la conexión no está activa; solo regresa.
-     * Si sí lo está, se inicializa con los valores por defecto
-     * (como en el constructor), pero esta vez pasa sus propios
-     * pines en vez de solicitarlos
+     * Si la conexión está activa, pone el estado
+     * a inactivo e inicializa con placeholders
      * */
     void endConnection()
     {
-        if (this->isActive) 
-        // this->isActive = false;
-        // this->distance = PLACEHOLDER_NUMBER;
-        // this->time = PLACEHOLDER_NUMBER;
-        // this->speed = PLACEHOLDER_NUMBER;
-        // this->direction = UNKNOWN;
-        this->init(this->input, this->output, false, PLACEHOLDER_NUMBER, PLACEHOLDER_NUMBER, PLACEHOLDER_NUMBER, UNKNOWN);
+        if (this->active) {
+            this->active = false;
+            this->setPlaceholders();
+        }
     };
 
+    /**
+     * Actúa dependiendo de los datos recolectados por la conexión.
+     * 
+     * ---
+     * Si la dirección es `HER` (acercándose) y la velocidad es mayor
+     * a la `SAFE_SPEED`, se llama a `onHighRisk`.
+     * Si la distancia no es nula y es menor a la `SAFE_DISTANCE`, se llama
+     * a `onModerateRisk`.
+     * Si ninguna de las opciones anteriores ocurrió, se llama a 
+     * `onLowRisk`
+     * **/
     void act()
     {
-        if (this->direction == HER && this->speed >= EMERGENCY_SPEED) return onEmergency(this);
-        if (this->direction == HER || this->distance <= MODERATE_DISTANCE) return onModerate(this);
-        onSafe(this);
+        if (this->direction == HER && this->speed >= SAFE_SPEED) this->onHighRisk();
+        else if (this->distance != NULL_DISTANCE && this->distance < SAFE_DISTANCE) this->onModerateRisk();
+        else this->onLowRisk();
     };
 
+    /**
+     * Escucha (se mantiene al tanto) de la velocidad y distancia
+     * del objeto más cercano
+     * 
+     * ---
+     * Obtiene la distancia y, si es nula, manda a terminar la conexión,
+     * si no es nula, checa si la conexión está activa o no y se manda a llamar a
+     * `continueConnection` o `startConnection` (respectivamente),
+     * finalmente, se llama a `act`
+     * */
     void listen()
     {
         double distance = this->getDistance();
-        if (distance == NULL_READING)
+        if (distance == NULL_DISTANCE)
         {
             this->endConnection();
             return;
         }
-        if (this->isActive) this->continueConnection(distance);
+        if (this->active) this->continueConnection(distance);
         else this->startConnection(distance);
+        
         this->act();
     };
 
+    /**
+     * Obtiene la distancia (respecto al sensor) a la que está el objeto
+     * más cercano
+     * 
+     * ---
+     * Véase el link: 
+     * https://create.arduino.cc/projecthub/abdularbi17/ultrasonic-sensor-hc-sr04-with-arduino-tutorial-327ff6
+     * */
     double getDistance()
     {
-        digitalWrite(this->output, HIGH);
-        // the timeout is 1 second by default; could change
-        // depending on the maximum distance we intend to measure. also,
-        // the documentation states that i should call the
-        // method a few microseconds before the actual pulse begins
-        // so i compensed it with the addition
-        unsigned long reading = pulseIn(this->input, HIGH);
-        digitalWrite(this->output, LOW);
-        if (reading == NULL_READING) return NULL_READING;
-        return parseReading(reading + 24);
+        digitalWrite(this->trigger, HIGH);
+        delayMicroseconds(10);
+        digitalWrite(this->trigger, LOW);
+        unsigned long duration = pulseIn(this->listener, HIGH);
+        if (duration == NULL_DURATION) return NULL_DISTANCE;
+        return getDistanceFromDuration(duration);
     };
+
+    /**
+     * Función a ejecutar cuando el riesgo es alto
+     * */
+    void onHighRisk() {
+        Serial.println("EL_RIESGO_ES_ALTO");
+        this->printStatus();
+    };
+
+    /**
+     * Función a ejecutar cuando el riesgo es moderado
+     * */
+    void onModerateRisk(){
+        Serial.println("ElRiesgoEsModerado");
+        this->printStatus();
+    };
+
+    /**
+     * Función a ejecutar cuando el riesgo es bajo
+     * */
+    void onLowRisk(){
+        Serial.println("el-riesgo-es-bajo");
+        this->printStatus();
+    };
+
+    /**
+     * Función auxiliar (no será implementada en la versión final)
+     * que imprime datos de la conexión en pantalla
+     * */
+    void printStatus() {
+        Serial.print("Distancia: ");
+        Serial.print(this->distance, 6);
+        Serial.println(" m");
+        Serial.print("Velocidad: ");
+        Serial.print(this->speed, 6);
+        Serial.println(" m/s");
+        Serial.print("Dirección");
+        Serial.print(this->direction == Direction::HER? "HER": "HIN");
+        Serial.println("---");
+    }
 };
 
-MotionConnection mainConnection(5, 1);
+/**
+ * Conexión principal (hasta ahora la única)
+ * 
+ * ---
+ * Los pines a utilizar se decidieron por conveniencia al ensamblar
+ * */
+MotionConnection mainConnection(8, 7);
 
-void setup() {};
+void setup() {
+    Serial.begin(9600);
+};
 
 void loop()
 {
