@@ -361,7 +361,7 @@ public:
         Serial.print(this->speed, 6);
         Serial.println(" m/s");
         Serial.print("Dirección: ");
-        Serial.print(DirectionName[this->direction]);
+        Serial.println(DirectionName[this->direction]);
         Serial.println("---");
     }
 };
