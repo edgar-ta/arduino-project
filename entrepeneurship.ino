@@ -36,7 +36,7 @@
  * Todas las velocidades mayores a esta serán consideradas
  * peligrosas.
  * */
-#define SAFE_SPEED 2
+#define SAFE_SPEED 0.5
 
 /**
  * Distancia mínima (exclusiva) que un objeto puede tener
@@ -244,10 +244,10 @@ public:
 
         // se multiplica por mil para convertir los milisegundos de
         // la delta de tiempo a segundos
-        this->speed = 1000 * distanceDelta / timeDelta;
         this->direction = (Direction) getDirection(distanceDelta);
-        this->time = time;
+        this->speed = abs(1000 * distanceDelta / timeDelta);
         this->distance = distance;
+        this->time = time;
     }
 
     /**
@@ -278,7 +278,7 @@ public:
      * **/
     void act()
     {
-        if (this->direction == Direction::HER && this->speed >= SAFE_SPEED) this->onHighRisk();
+        if (this->direction == Direction::HER && this->speed > SAFE_SPEED) this->onHighRisk();
         else if (this->distance != NULL_DISTANCE && this->distance < SAFE_DISTANCE) this->onModerateRisk();
         else this->onLowRisk();
     };
@@ -329,24 +329,22 @@ public:
      * Función a ejecutar cuando el riesgo es alto
      * */
     void onHighRisk() {
-        Serial.println("EL_RIESGO_ES_ALTO");
-        this->printStatus();
+        Serial.println("¡QUIETO!");
     };
 
     /**
      * Función a ejecutar cuando el riesgo es moderado
      * */
     void onModerateRisk(){
-        Serial.println("ElRiesgoEsModerado");
-        this->printStatus();
+        Serial.println("cuidado");
     };
 
     /**
      * Función a ejecutar cuando el riesgo es bajo
      * */
     void onLowRisk(){
-        Serial.println("el-riesgo-es-bajo");
-        this->printStatus();
+        // Serial.println("el-riesgo-es-bajo");
+        // this->printStatus();
     };
 
     /**
