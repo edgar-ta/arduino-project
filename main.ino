@@ -80,7 +80,7 @@ double getDistanceFromDuration(unsigned long duration)
  * Direcciones en las que un objeto se mueve respecto
  * al sensor.
  * */
-typedef enum
+enum Direction
 {
     /**
      * Alemán; que se está alejando
@@ -101,7 +101,7 @@ typedef enum
      * Self-explanatory
      * */
     PLACEHOLDER
-} Direction;
+};
 
 /**
  * Variable auxiliar (no se utilizará en la versión final)
@@ -122,11 +122,11 @@ const String DirectionName[] = {
  * 
  * ---
  * Si la delta es igual a cero, el objeto no se está
- * moviendo y se regresa `STILL`, si la delta es mayor
+ * moviendo y se regresa `Direction::STILL`, si la delta es mayor
  * a cero, el objeto se está acercando y se regresa
- * `HER`, sino, se regresa `HIN`
+ * `Direction::HER`, sino, se regresa `Direction::HIN`
  * */
-Direction getDirection(double distanceDelta) {
+int getDirection(double distanceDelta) {
     if (distanceDelta == 0) return Direction::STILL;
     if (distanceDelta > 0) return Direction::HER;
     return Direction::HIN;
@@ -245,7 +245,7 @@ public:
         // se multiplica por mil para convertir los milisegundos de
         // la delta de tiempo a segundos
         this->speed = 1000 * distanceDelta / timeDelta;
-        this->direction = getDirection(distanceDelta);
+        this->direction = (Direction) getDirection(distanceDelta);
         this->time = time;
         this->distance = distance;
     }
@@ -269,7 +269,7 @@ public:
      * Actúa dependiendo de los datos recolectados por la conexión.
      * 
      * ---
-     * Si la dirección es `HER` (acercándose) y la velocidad es mayor
+     * Si la dirección es `Direction::HER` (acercándose) y la velocidad es mayor
      * a la `SAFE_SPEED`, se llama a `onHighRisk`.
      * Si la distancia no es nula y es menor a la `SAFE_DISTANCE`, se llama
      * a `onModerateRisk`.
@@ -278,7 +278,7 @@ public:
      * **/
     void act()
     {
-        if (this->direction == HER && this->speed >= SAFE_SPEED) this->onHighRisk();
+        if (this->direction == Direction::HER && this->speed >= SAFE_SPEED) this->onHighRisk();
         else if (this->distance != NULL_DISTANCE && this->distance < SAFE_DISTANCE) this->onModerateRisk();
         else this->onLowRisk();
     };
